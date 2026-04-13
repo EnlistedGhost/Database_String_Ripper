@@ -1,36 +1,40 @@
-// 1. Grab raw milliseconds (system time since Jan 1, 1970)
-const rawMs = Date.now(); 
+const rawMs = Date.now();
 
-// Define constants in milliseconds
-const msPerSecond = 1000;
-const msPerMinute = msPerSecond * 60;
-const msPerHour = msPerMinute * 60;
-const msPerDay = msPerHour * 24;
-const msPerYear = msPerDay * 365.25; // Accounting for leap years
+// 1. Adjust for GMT-8 (8 hours * 60 mins * 60 secs * 1000 ms)
+const offsetMs = 8 * 60 * 60 * 1000;
+const localMs = rawMs - offsetMs;
 
-// 2. Perform manual division and remainder math
-// Year (Starting from 1970)
-const yearsSinceEpoch = Math.floor(rawMs / msPerYear);
-const year = 1970 + yearsSinceEpoch;
+// 2. Break down into days and remaining time
+const msPerDay = 24 * 60 * 60 * 1000;
+let totalDays = Math.floor(localMs / msPerDay);
+let remainingMs = localMs % msPerDay;
 
-// Remaining MS after years are removed
-let remainingMs = rawMs % msPerYear;
+// 3. Determine the Year (Accounting for Leap Years)
+let year = 1970;
+while (true) {
+    // Leap year rule: divisible by 4, but not 100 unless divisible by 400
+    const isLeap = (year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0));
+    const daysInYear = isLeap ? 366 : 365;
 
-// Month (Approximate - 30.44 days per month)
-const msPerMonth = msPerDay * 30.44;
-const month = Math.floor(remainingMs / msPerMonth) + 1; // Months are 1-indexed
-remainingMs %= msPerMonth;
+    if (totalDays < daysInYear) break;
+    totalDays -= daysInYear;
+    year++;
+}
 
-// Day
-const day = Math.floor(remainingMs / msPerDay) + 1;
-remainingMs %= msPerDay;
+// 4. Determine the Month (Using correct days per month)
+const isLeapYear = (year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0));
+const monthDays = [31, isLeapYear ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
 
-// Hour
-const hour = Math.floor(remainingMs / msPerHour);
-remainingMs %= msPerHour;
+let month = 0;
+while (totalDays >= monthDays[month]) {
+    totalDays -= monthDays[month];
+    month++;
+}
 
-// Minute
-const minute = Math.floor(remainingMs / msPerMinute);
+// 5. Final Calculations
+const finalMonth = month + 1; // Months are 1-indexed
+const finalDay = totalDays + 1; // Days are 1-indexed
+const finalHour = Math.floor(remainingMs / (60 * 60 * 1000));
+const finalMinute = Math.floor((remainingMs % (60 * 60 * 1000)) / (60 * 1000));
 
-console.log(`Raw MS: ${rawMs}`);
-console.log(`Converted: ${year}-${month}-${day} ${hour}:${minute}`);
+console.log(`PST Time: ${year}-${finalMonth}-${finalDay} ${finalHour}:${finalMinute}`);
